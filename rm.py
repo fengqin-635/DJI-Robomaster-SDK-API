@@ -1,10 +1,3 @@
-# DOING: Implementing queue for all socket and use select for all socket including telemetry
-# not really sure if select works with UDP socket
-# TODO: Logger for commands send by robots
-# TODO: Implement manager to handle multiple robots.
-# TODO: move telemetry to manager. with different select and manager to telemtry data into multiple robots
-# TODO: Sequence number mechanism of rOBOmaster EP
-
 import socket
 import select
 import types
@@ -16,10 +9,11 @@ import numpy as np
 import signal
 import cv2
 import opus_decoder
+import sys
 
 
-class RMS1:
-    def __init__(self,robot_ip,command_port=40923,video_port=40921,audio_port=40922,telem_port=40924,event_port=40925,broadcast=40926):
+class Robomaster:
+    def __init__(self,robot_ip='192.168.2.1',command_port=40923,video_port=40921,audio_port=40922,telem_port=40924,event_port=40925,broadcast=40926):
         self.robot_ip = robot_ip
         self.command_port = command_port
         self.video_port = video_port
@@ -38,9 +32,11 @@ class RMS1:
         self.in_video_mode = False
         self.in_audio_mode = False
         self.in_command_mode = False
-        self.last_cmd = ''
+        self.last_cmd = None
         self.start_cmd_time = -1
         self.timeout = 9.0
+        self.cmd_timeout = 15
+        self.cmd_start_time = -1
 
         self.decoder = libh264decoder.H264Decoder()
         libh264decoder.disable_logging
@@ -63,6 +59,9 @@ class RMS1:
         self.telem_process_thread = None
         self.socket_closed = False
         self.response =''
+        self.connecting = False
+        self.connecting_timeout = False
+        self.connecting_error = False
         self.data_queue = {
             self.command_sock : queue.Queue(32),
             self.audio_sock : queue.Queue(32),
@@ -77,21 +76,45 @@ class RMS1:
 
     def close(self):
         self.socket_closed = True
-        self.sock_process_thread.join()
-        self.videothread.join()
-        self.audiothread.join()
         self.video_sock.close()
         self.audio_sock.close()
         self.telem_sock.close()
         self.event_sock.close()
         self.command_sock.close()
 
-    def connect(self):
+    def connect_via_usb(self, reconnect_attempt=3):
+        self.robot_ip = '192.168.42.2'
+        print('Connecting to Robot %s (usb mode)' % self.robot_ip)
+        return self._connect(max_connect_attempt=reconnect_attempt)
+        
+
+    def connect_via_direct_wifi(self, reconnect_attempt=3):
+        self.robot_ip = '192.168.2.1'
+        print('Connecting to Robot %s (direct wifi mode)' % self.robot_ip)
+        return self._connect(max_connect_attempt=reconnect_attempt)
+
+    def connect_via_router(self, robot_ip,reconnect_attempt=3):
+
+        if robot_ip is None:
+            return False
+        else:
+            print('Connecting to Robot %s (router mode)' % self.robot_ip)
+            try:
+                socket.inet_aton(robot_ip)
+                self.robot_ip = robot_ip
+                return self._connect(max_connect_attempt=reconnect_attempt)
+            except socket.error:
+                print("Invalid IP")
+                return False
+
+    def _connect(self,max_connect_attempt=3):
+        self.max_connect_attempt = max_connect_attempt
         try:
+            self.connecting = True
             rm_command_addr = (self.robot_ip,self.command_port)
             self.command_sock.connect(rm_command_addr)
             self.command_sock.setblocking(False)
-            self.command_sock.settimeout(10)
+            self.command_sock.settimeout(5)
             self.message_q = queue.Queue()
             self.w_socks.append(self.command_sock)
             self.r_socks.append(self.command_sock)
@@ -99,9 +122,30 @@ class RMS1:
             self.sock_process_thread = threading.Thread(target=self._process_socks)
             self.sock_process_thread.daemon = True
             self.sock_process_thread.start()
-            self.send('command')
-            while self.in_command_mode == False:
-                time.sleep(0.5)
+            self.connecting_timeout = False
+            connect_attempt = 1
+            while connect_attempt < self.max_connect_attempt:
+                print('Attempt %s.' % str(connect_attempt))
+
+                self.send('command')
+
+                while self.in_command_mode == False and self.connecting_timeout == False and self.connecting_error == False:
+                    time.sleep(0.5)
+                
+                if self.in_command_mode == False:
+                    if self.connecting_timeout:                        
+                        self.connecting = False
+                    if self.connecting_error:
+                        self.connecting = False
+
+                connect_attempt = connect_attempt + 1
+
+                if self.in_command_mode:
+                    break
+
+                if connect_attempt > self.max_connect_attempt:
+                    return False
+
             return True
         except socket.error as err:
             print("Robot %s entering command mode failed.(%s)" % (self.robot_ip,err))
@@ -114,12 +158,12 @@ class RMS1:
 
         try:
             if data.lower() == 'command' and self.in_command_mode == False:
-                print("Connecting to %s" % self.robot_ip)
+#                print("Connecting to %s" % self.robot_ip)
 #                data = data.rstrip() + ' ' + str(self._cmdseq)
                 self.message_q.put(data.rstrip())
             else:
                 if self.in_command_mode == False:
-                    print('Robot %s unable to process as not in command mode' % self.robot_ip)
+                    print('Robot %s unable to process as not in command mode except command' % self.robot_ip)
                 else:
 #                    data = data.rstrip() + ' ' + str(self._cmdseq)                    
                     self.message_q.put(data.rstrip())
@@ -128,8 +172,49 @@ class RMS1:
             print("Robot %s (send) Queue Full- %s" % (self.robot_ip,err))
             return False
 
+    def videostreamon(self):
+        self.send('stream on')
+        i = 0
+        while self.in_video_mode == False and i < 5:
+            time.sleep(1)
+            i = i + 5
+        return self.in_video_mode
 
-    def readframe(self):
+    def videostreamoff(self):
+        self.send('stream off')
+        i = 0
+        while self.in_video_mode == True and i < 5:
+            time.sleep(1)
+            i = i + 5
+        
+        if self.in_video_mode == False:
+            return True
+        else:
+            return False
+
+    def audiostreamoff(self):
+        self.send('audio on')
+        i = 0
+        while self.in_audio_mode == True and i < 5:
+            time.sleep(1)
+            i = i + 5
+        
+        if self.in_audio_mode == False:
+            return True
+        else:
+            return False
+
+        return self.in_audio_mode
+    
+    def audiostreamon(self):
+        self.send('audio on')
+        i = 0
+        while self.in_audio_mode == False or i < 5:
+            time.sleep(1)
+            i = i + 5
+        return self.in_audio_mode
+
+    def getvideoframe(self):
         if self.in_video_mode:
             try:
                 self.frame = self.decoder_queue.get(timeout=2)
@@ -209,13 +294,16 @@ class RMS1:
                     print("Robot %s error at binding to telemetry port - %s" % (self.robot_ip,err))
 #TODO: ends here
                 self.in_command_mode = True
-                    
+                self.connecting = False
             else:
                 if r.lower() == 'error':
                     print('Robot %s command mode failed' % self.robot_ip)
+                    self.connecting_error = True
                 else:
-                    print('Robot %s encountered unexpected data when going into command mode' % self.robot_ip)
+                    self.connecting_error = True
+                    print('Robot %s encountered unexpected data when going into command mode - %s' % (self.robot_ip, r))
         else:
+            self.connecting_error = True
             print('Robot %s is not going into command mode' % self.robot_ip)
 
 # To-Do: to handle telemetry    
@@ -336,7 +424,7 @@ class RMS1:
                     self.audio_packet_data = b''
 
 
-    def readaudioframe(self):
+    def getaudioframe(self):
         if self.in_audio_mode:
             try:
                 self.audioframe = self.audio_decoder_queue.get(timeout=2)
@@ -389,6 +477,7 @@ class RMS1:
                         if self.last_cmd == 'audio on':
                             self._process_audio_mode(d)
                         self.response = d
+                    self.last_cmd = None
                 else:
                     if r is self.video_sock:
 #                        print('v')
@@ -419,7 +508,7 @@ class RMS1:
             for w in writable:
                 try:
                     if self.message_q.empty() == False and w is self.command_sock:
-                        if self.response != '' or self.in_command_mode == False:
+                        if (self.response != '' and self.last_cmd is None) or self.in_command_mode == False:
                             msg_to_send = self.message_q.get_nowait()
                             self._cmdseq = (self._cmdseq + 1) % 100 
                             msg_to_send_with_seq = msg_to_send + ' seq ' + str(self._cmdseq)
@@ -427,6 +516,25 @@ class RMS1:
                             print('Robot %s send %s' % (self.robot_ip, msg_to_send_with_seq))
                             self.last_cmd = msg_to_send
                             self.response = ''
+                            self.cmd_start_time = time.time()
+                        else:
+                            if self.response == '' and self.in_command_mode and self.last_cmd:
+                                if (time.time() - self.cmd_start_time) > self.cmd_timeout:
+                                    print("Robot %s response to last command (%s) timeout. Proceed with next command." % (self.robot_ip, self.last_cmd))
+                                    msg_to_send = self.message_q.get_nowait()
+                                    self._cmdseq = (self._cmdseq + 1) % 100 
+                                    msg_to_send_with_seq = msg_to_send + ' seq ' + str(self._cmdseq)
+                                    self.command_sock.send(msg_to_send_with_seq.encode('UTF-8'))
+                                    print('Robot %s send %s' % (self.robot_ip, msg_to_send_with_seq))
+                                    self.last_cmd = msg_to_send
+                                    self.response = ''
+                                    self.cmd_start_time = time.time()
+                                
+                    else:
+                        if self.message_q.empty() and w is self.command_sock and self.connecting:
+                            if(time.time() - self.cmd_start_time) > self.cmd_timeout:
+                                self.connecting_timeout = True
+
                 except socket.error as err:
                     print('Robot %s - send command (%s) failed. (%s)' % (self.robot_ip, msg_to_send, err))
                    
@@ -453,3 +561,17 @@ class RMS1:
 
 
 
+if __name__ == '__main__':
+    try:
+
+        r = Robomaster()
+
+        if r.connect_via_direct_wifi(): # connect function returns true when connected. otherwise
+            print('done')
+        else:
+            print('false')
+        
+        r.close()
+
+    except KeyboardInterrupt:
+        sys.exit(0)
