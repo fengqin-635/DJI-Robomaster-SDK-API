@@ -1,11 +1,5 @@
-API for interfacing RMS1 SDK by 65Drones Pte Ltd
-Supported features of this API
-- Recieve video and audio stream from Robomaster EP
-- Recieve video stream from Tello EDU
-- Interfaces with Tello EDU and handles connection keep alive with Tello
-- Support Ubuntu only.
-- Interfaces with Robomaster EP
+Python API for interfacing DJI Robomaster and DJI Tello EDU SDK
 
-Sample codes of how to use this API can be studied by looking at showrmstream.py. 
+IMPORTANT: Before using these codes, kindly download the h264 and opus libraries from https://github.com/dji-sdk/RoboMaster-SDK/tree/master/sample_code/RoboMasterEP/stream/decoder and compile h264 and opus libraries in your machine by following the instructions in the link.
 
-Samples code to control both Robomaster EP and Tello EDU concurrently, and to show video stream from one piece code can be seen in TelloRMVideoClient.py. AI code can be added into TelloRMVideoClient.py
+(c)2020, 65Drones Pte Ltd
