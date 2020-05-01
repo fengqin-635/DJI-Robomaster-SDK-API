@@ -1,4 +1,4 @@
-# Python API for interfacing DJI Robomaster and DJI Tello EDU SDK
+# Python API for interfacing with DJI Robomaster and DJI Tello EDU in SDK mode
 
 ## See https://dji-robomaster-and-tello-edu-python-api.readthedocs.io/en/latest/ for documentation. 
 
