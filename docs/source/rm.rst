@@ -292,14 +292,13 @@ off_chassis_attitude_data_push()
 on_chassis_position_data_push(** callback **, **[** frequency **]**)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 *on_chassis_position_data_push(callback , [frequency])* method turns on Robomaster's ability to push out position data at the frequency. 
-Position are referring x, y distance travelled or how much Robomaster has turned for the current chassis movement commands.
-If frequency is not provided, position data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
+Position are referring x, y distance travelled. If frequency is not provided, position data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
 When position data is received, the callback function will called with the recieved attitude. If more callback functions are needed, call this method again with other callback functions.  
 
 For example:
 ::
-                     #x   y   z
-    chassis position 1.5  2   60 
+                     #x   y
+    chassis position 1.5  2   
 
 
 .. _off_chassis_position_data_push:
