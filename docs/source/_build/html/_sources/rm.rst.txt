@@ -48,6 +48,16 @@ Chassis control:
 * `move_chassis_by_distance`_
 * `move_chassis_by_speed`_
 
+Telemetry Data Stream:
+
+* `on_chassis_attitude_data_push`_
+* `off_chassis_attitude_data_push`_
+* `on_chassis_position_data_push`_
+* `off_chassis_position_data_push`_
+* `on_chassis_status_data_push`_
+* `off_chassis_status_data_push`_
+
+
 Establish SDK Connection
 ------------------------
 Before any other function call, establish SDK connection using one of these connect methods. Do only once.
@@ -175,6 +185,10 @@ getaudioframe()
 
 .. _set_travel_mode:
 
+
+Set Robot Travel mode
+---------------------
+
 set_travel_mode(**mode**)
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 *set_travel_mode(mode)* functions set the travel mode of the robot. Acceptable value for mode are chassis_lead, gimbal_lead or free. Return ok if it is successful.
@@ -187,6 +201,9 @@ query_travel_mode()
 
 .. _set_chassis_wheel_speed:
 
+Chassis Control
+---------------
+
 set_chassis_wheel_speed(**w1,w2,w3,w4**)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 *set_chassis_wheel_speed(w1,w2,w3,w4)* function set the rotation speed of the 4 wheels. Upon set, the robot will move until the rotation speed is set otherwise with another chassis command. Acceptable value for w1, w2,w3,w4 ranges from -1000 to 1000. All four w1,w2,w3,w4 must be defined. Return ok if set successful.
@@ -195,7 +212,7 @@ set_chassis_wheel_speed(**w1,w2,w3,w4**)
 
 move_chassis_by_distance(**x,y,z,vxy,vz**)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-move_chassis_by_distance(x,y,z,vxy,vz)* translate or move the chassis until the defined distance from its current position is reached. 
+*move_chassis_by_distance(x,y,z,vxy,vz)* translate or move the chassis until the defined distance from its current position is reached. 
 
 * x and y are in meters ranges from -5m to 5m. 
 * z are in degree to rotate the chassis and acceptable value ranges from -1800 to 1800. 
@@ -207,8 +224,106 @@ move_chassis_by_distance(x,y,z,vxy,vz)* translate or move the chassis until the 
 
 move_chassis_by_speed(**x,y,z**)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-move_chassis_by_speed(x,y,z,vxy,vz)* keeps the robot moving at the defined speed until another chassis command is received. 
+*move_chassis_by_speed(x,y,z,vxy,vz)* keeps the robot moving at the defined speed until another chassis command is received. 
 
 * x and y are in m/s ranges from -3.5m/s to 3.5m/s. 
 * z are in degree/sec to rotate the chassis and acceptable value ranges from -600 (counter-clockwise) to 600 (clockwise) degree/sec. 
 * It is not necessary to define all of the values. The function needs at least value of x or y or z.
+
+Telemetry Data Stream
+---------------------
+Robomaster object can push telemetry data to callback functions. Robomaster object will call the callback functions when receive telemetry data from robomaster.
+It is necessary to provide function when Robomaster object's methods to enable telemetry data push. 
+
+For example: Request to get attitude data.
+
+::
+    # these call back functions will be called by Robomaster object
+    # these functions only print the data
+    def testattitudepush(data):
+        print('tap')
+        print(data)
+
+    def testattitudepush2(data):
+        print('tap2')
+        print(data)
+
+    if __name__ == '__main__':
+        try:
+            r = Robomaster()
+            if r.connect_via_direct_wifi(): 
+                print(r.on_attitude_data_push(testattitudepush,25))
+                print(r.on_attitude_data_push(testattitudepush2,50))
+
+Result:
+
+::
+
+    tap2
+    chassis push attitude 0.06 -0.48 138.46 ;
+    tap
+    chassis push attitude 0.13 -0.49 142.07 ;
+    tap2
+    chassis push attitude 0.13 -0.49 142.07 ;
+    tap
+    chassis push attitude 0.12 -0.48 144.97 ;
+
+.. _on_chassis_attitude_data_push:
+
+on_chassis_attitude_data_push(** callback **, **[** frequency **]**)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*on_chassis_attitude_data_push(callback , [frequency])* method turns on Robomaster's ability to push out attitude data at the frequency. 
+Attitude are referring to pitch, roll and yaw of the chassis. If frequency is not provided, attitude data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
+When attitude data is received, the callback function will called with the received attitude data. If more callback functions are needed, call this method again with other callback functions.  
+
+For example:
+::
+                     #pitch  roll   yaw  
+    chassis attitude 0.02    0.36   102.46 
+
+.. _off_chassis_attitude_data_push:
+
+off_chassis_attitude_data_push()
+^^^^^^^^^^^^^^^^^^^^^^^^
+*off_chassis_attitude_data_push()* method turns off Robomaster's ability to push out attitude data.
+
+.. _on_chassis_position_data_push:
+
+on_chassis_position_data_push(** callback **, **[** frequency **]**)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*on_chassis_position_data_push(callback , [frequency])* method turns on Robomaster's ability to push out position data at the frequency. 
+Position are referring x, y distance travelled or how much Robomaster has turned for the current chassis movement commands.
+If frequency is not provided, position data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
+When position data is received, the callback function will called with the recieved attitude. If more callback functions are needed, call this method again with other callback functions.  
+
+For example:
+::
+                     #x   y   z
+    chassis position 1.5  2   60 
+
+
+.. _off_chassis_position_data_push:
+
+off_chassis_position_data_push()
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*off_chassis_position_data_push()* method turns off Robomaster's ability to push out position data.
+
+.. _on_chassis_status_data_push:
+
+on_chassis_status_data_push(** callback **, **[** frequency **]**)
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*on_chassis_status_data_push(callback , [frequency])* method turns on Robomaster's ability to push out status data at the frequency. 
+Status are referring to if the robot is static, uphill, downhill, on_slope, pick_up, slip, impact_x, impact_y, impact_z, roll_over, hill_static.
+If frequency is not provided, position data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
+When position data is received, the callback function will called with the recieved attitude. If more callback functions are needed, call this method again with other callback functions.  
+
+For example:
+::
+                   #static uphill downhill on_slope pick_up #slip  impact_X impact_y impact_Z  roll_over hill_static
+    chassis status 0       1      0        0        0       0      0        0        0          0         1
+
+.. _off_chassis_status_data_push:
+
+off_chassis_status_data_push()
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*off_chassis_status_data_push()* method turns off Robomaster's ability to push out status data.

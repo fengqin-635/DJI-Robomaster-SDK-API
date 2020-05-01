@@ -79,6 +79,15 @@
 <li><a class="reference internal" href="#move-chassis-by-distance">move_chassis_by_distance</a></li>
 <li><a class="reference internal" href="#move-chassis-by-speed">move_chassis_by_speed</a></li>
 </ul>
+<p>Telemetry Data Stream:</p>
+<ul class="simple">
+<li><a class="reference internal" href="#on-chassis-attitude-data-push">on_chassis_attitude_data_push</a></li>
+<li><a class="reference internal" href="#off-chassis-attitude-data-push">off_chassis_attitude_data_push</a></li>
+<li><a class="reference internal" href="#on-chassis-position-data-push">on_chassis_position_data_push</a></li>
+<li><a class="reference internal" href="#off-chassis-position-data-push">off_chassis_position_data_push</a></li>
+<li><a class="reference internal" href="#on-chassis-status-data-push">on_chassis_status_data_push</a></li>
+<li><a class="reference internal" href="#off-chassis-status-data-push">off_chassis_status_data_push</a></li>
+</ul>
 <div class="section" id="establish-sdk-connection">
 <h3>Establish SDK Connection<a class="headerlink" href="#establish-sdk-connection" title="Permalink to this headline">¶</a></h3>
 <p>Before any other function call, establish SDK connection using one of these connect methods. Do only once.</p>
@@ -178,21 +187,27 @@ Return True if audio stream is turned on successful, else return False.</p>
 <span id="id6"></span><h4>getaudioframe()<a class="headerlink" href="#getaudioframe" title="Permalink to this headline">¶</a></h4>
 <p><em>getaudioframe()</em> function gets a audio frame from the stream. Return a opus decoded video frame. Return None if there is no more audio in the stream.</p>
 </div>
+</div>
+<div class="section" id="set-robot-travel-mode">
+<span id="set-travel-mode"></span><h3>Set Robot Travel mode<a class="headerlink" href="#set-robot-travel-mode" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="set-travel-mode-mode">
-<span id="set-travel-mode"></span><h4>set_travel_mode(<strong>mode</strong>)<a class="headerlink" href="#set-travel-mode-mode" title="Permalink to this headline">¶</a></h4>
+<h4>set_travel_mode(<strong>mode</strong>)<a class="headerlink" href="#set-travel-mode-mode" title="Permalink to this headline">¶</a></h4>
 <p><em>set_travel_mode(mode)</em> functions set the travel mode of the robot. Acceptable value for mode are chassis_lead, gimbal_lead or free. Return ok if it is successful.</p>
 </div>
 <div class="section" id="query-travel-mode">
 <span id="id7"></span><h4>query_travel_mode()<a class="headerlink" href="#query-travel-mode" title="Permalink to this headline">¶</a></h4>
 <p><em>query_travel_mode(mode)</em> function queries the current travel mode of the robot. Return a string containing the travel mode of the robot.</p>
 </div>
+</div>
+<div class="section" id="chassis-control">
+<span id="set-chassis-wheel-speed"></span><h3>Chassis Control<a class="headerlink" href="#chassis-control" title="Permalink to this headline">¶</a></h3>
 <div class="section" id="set-chassis-wheel-speed-w1-w2-w3-w4">
-<span id="set-chassis-wheel-speed"></span><h4>set_chassis_wheel_speed(<strong>w1,w2,w3,w4</strong>)<a class="headerlink" href="#set-chassis-wheel-speed-w1-w2-w3-w4" title="Permalink to this headline">¶</a></h4>
+<h4>set_chassis_wheel_speed(<strong>w1,w2,w3,w4</strong>)<a class="headerlink" href="#set-chassis-wheel-speed-w1-w2-w3-w4" title="Permalink to this headline">¶</a></h4>
 <p><em>set_chassis_wheel_speed(w1,w2,w3,w4)</em> function set the rotation speed of the 4 wheels. Upon set, the robot will move until the rotation speed is set otherwise with another chassis command. Acceptable value for w1, w2,w3,w4 ranges from -1000 to 1000. All four w1,w2,w3,w4 must be defined. Return ok if set successful.</p>
 </div>
 <div class="section" id="move-chassis-by-distance-x-y-z-vxy-vz">
 <span id="move-chassis-by-distance"></span><h4>move_chassis_by_distance(<strong>x,y,z,vxy,vz</strong>)<a class="headerlink" href="#move-chassis-by-distance-x-y-z-vxy-vz" title="Permalink to this headline">¶</a></h4>
-<p>move_chassis_by_distance(x,y,z,vxy,vz)* translate or move the chassis until the defined distance from its current position is reached.</p>
+<p><em>move_chassis_by_distance(x,y,z,vxy,vz)</em> translate or move the chassis until the defined distance from its current position is reached.</p>
 <ul class="simple">
 <li>x and y are in meters ranges from -5m to 5m.</li>
 <li>z are in degree to rotate the chassis and acceptable value ranges from -1800 to 1800.</li>
@@ -203,12 +218,102 @@ Return True if audio stream is turned on successful, else return False.</p>
 </div>
 <div class="section" id="move-chassis-by-speed-x-y-z">
 <span id="move-chassis-by-speed"></span><h4>move_chassis_by_speed(<strong>x,y,z</strong>)<a class="headerlink" href="#move-chassis-by-speed-x-y-z" title="Permalink to this headline">¶</a></h4>
-<p>move_chassis_by_speed(x,y,z,vxy,vz)* keeps the robot moving at the defined speed until another chassis command is received.</p>
+<p><em>move_chassis_by_speed(x,y,z,vxy,vz)</em> keeps the robot moving at the defined speed until another chassis command is received.</p>
 <ul class="simple">
 <li>x and y are in m/s ranges from -3.5m/s to 3.5m/s.</li>
 <li>z are in degree/sec to rotate the chassis and acceptable value ranges from -600 (counter-clockwise) to 600 (clockwise) degree/sec.</li>
 <li>It is not necessary to define all of the values. The function needs at least value of x or y or z.</li>
 </ul>
+</div>
+</div>
+<div class="section" id="telemetry-data-stream">
+<h3>Telemetry Data Stream<a class="headerlink" href="#telemetry-data-stream" title="Permalink to this headline">¶</a></h3>
+<p>Robomaster object can push telemetry data to callback functions. Robomaster object will call the callback functions when receive telemetry data from robomaster.
+It is necessary to provide function when Robomaster object’s methods to enable telemetry data push.</p>
+<p>For example: Request to get attitude data.</p>
+<dl class="docutils">
+<dt>::</dt>
+<dd><p class="first"># these call back functions will be called by Robomaster object
+# these functions only print the data
+def testattitudepush(data):</p>
+<blockquote>
+<div>print(‘tap’)
+print(data)</div></blockquote>
+<dl class="last docutils">
+<dt>def testattitudepush2(data):</dt>
+<dd>print(‘tap2’)
+print(data)</dd>
+<dt>if __name__ == ‘__main__’:</dt>
+<dd><dl class="first last docutils">
+<dt>try:</dt>
+<dd><p class="first">r = Robomaster()
+if r.connect_via_direct_wifi():</p>
+<blockquote class="last">
+<div>print(r.on_attitude_data_push(testattitudepush,25))
+print(r.on_attitude_data_push(testattitudepush2,50))</div></blockquote>
+</dd>
+</dl>
+</dd>
+</dl>
+</dd>
+</dl>
+<p>Result:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tap2</span>
+<span class="n">chassis</span> <span class="n">push</span> <span class="n">attitude</span> <span class="mf">0.06</span> <span class="o">-</span><span class="mf">0.48</span> <span class="mf">138.46</span> <span class="p">;</span>
+<span class="n">tap</span>
+<span class="n">chassis</span> <span class="n">push</span> <span class="n">attitude</span> <span class="mf">0.13</span> <span class="o">-</span><span class="mf">0.49</span> <span class="mf">142.07</span> <span class="p">;</span>
+<span class="n">tap2</span>
+<span class="n">chassis</span> <span class="n">push</span> <span class="n">attitude</span> <span class="mf">0.13</span> <span class="o">-</span><span class="mf">0.49</span> <span class="mf">142.07</span> <span class="p">;</span>
+<span class="n">tap</span>
+<span class="n">chassis</span> <span class="n">push</span> <span class="n">attitude</span> <span class="mf">0.12</span> <span class="o">-</span><span class="mf">0.48</span> <span class="mf">144.97</span> <span class="p">;</span>
+</pre></div>
+</div>
+<div class="section" id="on-chassis-attitude-data-push-callback-frequency">
+<span id="on-chassis-attitude-data-push"></span><h4>on_chassis_attitude_data_push(** callback <strong>, **[</strong> frequency <strong>]</strong>)<a class="headerlink" href="#on-chassis-attitude-data-push-callback-frequency" title="Permalink to this headline">¶</a></h4>
+<p><em>on_chassis_attitude_data_push(callback , [frequency])</em> method turns on Robomaster’s ability to push out attitude data at the frequency.
+Attitude are referring to pitch, roll and yaw of the chassis. If frequency is not provided, attitude data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
+When attitude data is received, the callback function will called with the received attitude data. If more callback functions are needed, call this method again with other callback functions.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                 <span class="c1">#pitch  roll   yaw</span>
+<span class="n">chassis</span> <span class="n">attitude</span> <span class="mf">0.02</span>    <span class="mf">0.36</span>   <span class="mf">102.46</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="off-chassis-attitude-data-push">
+<span id="id8"></span><h4>off_chassis_attitude_data_push()<a class="headerlink" href="#off-chassis-attitude-data-push" title="Permalink to this headline">¶</a></h4>
+<p><em>off_chassis_attitude_data_push()</em> method turns off Robomaster’s ability to push out attitude data.</p>
+</div>
+<div class="section" id="on-chassis-position-data-push-callback-frequency">
+<span id="on-chassis-position-data-push"></span><h4>on_chassis_position_data_push(** callback <strong>, **[</strong> frequency <strong>]</strong>)<a class="headerlink" href="#on-chassis-position-data-push-callback-frequency" title="Permalink to this headline">¶</a></h4>
+<p><em>on_chassis_position_data_push(callback , [frequency])</em> method turns on Robomaster’s ability to push out position data at the frequency.
+Position are referring x, y distance travelled or how much Robomaster has turned for the current chassis movement commands.
+If frequency is not provided, position data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
+When position data is received, the callback function will called with the recieved attitude. If more callback functions are needed, call this method again with other callback functions.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                 <span class="c1">#x   y   z</span>
+<span class="n">chassis</span> <span class="n">position</span> <span class="mf">1.5</span>  <span class="mi">2</span>   <span class="mi">60</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="off-chassis-position-data-push">
+<span id="id9"></span><h4>off_chassis_position_data_push()<a class="headerlink" href="#off-chassis-position-data-push" title="Permalink to this headline">¶</a></h4>
+<p><em>off_chassis_position_data_push()</em> method turns off Robomaster’s ability to push out position data.</p>
+</div>
+<div class="section" id="on-chassis-status-data-push-callback-frequency">
+<span id="on-chassis-status-data-push"></span><h4>on_chassis_status_data_push(** callback <strong>, **[</strong> frequency <strong>]</strong>)<a class="headerlink" href="#on-chassis-status-data-push-callback-frequency" title="Permalink to this headline">¶</a></h4>
+<p><em>on_chassis_status_data_push(callback , [frequency])</em> method turns on Robomaster’s ability to push out status data at the frequency.
+Status are referring to if the robot is static, uphill, downhill, on_slope, pick_up, slip, impact_x, impact_y, impact_z, roll_over, hill_static.
+If frequency is not provided, position data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
+When position data is received, the callback function will called with the recieved attitude. If more callback functions are needed, call this method again with other callback functions.</p>
+<p>For example:</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>               <span class="c1">#static uphill downhill on_slope pick_up #slip  impact_X impact_y impact_Z  roll_over hill_static</span>
+<span class="n">chassis</span> <span class="n">status</span> <span class="mi">0</span>       <span class="mi">1</span>      <span class="mi">0</span>        <span class="mi">0</span>        <span class="mi">0</span>       <span class="mi">0</span>      <span class="mi">0</span>        <span class="mi">0</span>        <span class="mi">0</span>          <span class="mi">0</span>         <span class="mi">1</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="off-chassis-status-data-push">
+<span id="id10"></span><h4>off_chassis_status_data_push()<a class="headerlink" href="#off-chassis-status-data-push" title="Permalink to this headline">¶</a></h4>
+<p><em>off_chassis_status_data_push()</em> method turns off Robomaster’s ability to push out status data.</p>
 </div>
 </div>
 </div>
@@ -237,6 +342,9 @@ Return True if audio stream is turned on successful, else return False.</p>
 <li class="toctree-l2"><a class="reference internal" href="#robomaster-objects">Robomaster Objects</a><ul>
 <li class="toctree-l3"><a class="reference internal" href="#establish-sdk-connection">Establish SDK Connection</a></li>
 <li class="toctree-l3"><a class="reference internal" href="#getting-video-or-audio-stream-methods">Getting Video or Audio Stream methods</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#set-robot-travel-mode">Set Robot Travel mode</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#chassis-control">Chassis Control</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#telemetry-data-stream">Telemetry Data Stream</a></li>
 </ul>
 </li>
 </ul>

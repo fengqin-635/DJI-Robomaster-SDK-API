@@ -55,14 +55,23 @@ class Robomaster:
         self.audiothread = threading.Thread(target=self._receive_audio_data)
         self.audiothread.daemon = True
         self._cmdseq = 0
-        self.sock_process_thread = None
-        self.telem_process_thread = None
+
         self.socket_closed = False
         self.response =''
         self.connecting = False
         self.connecting_timeout = False
         self.connecting_error = False
         self.in_action = False
+
+        self.telemthread = threading.Thread(target=self._dispatch_telemetry)
+        self.telemthread.daemon = True
+
+        self.chassis_attitude_cb_list =[]
+        self.chassis_position_cb_list =[]
+        self.chassis_status_cb_list = []
+
+        self.telemetry_sleep = 0.5
+
         self.data_queue = {
             self.command_sock : queue.Queue(32),
             self.audio_sock : queue.Queue(32),
@@ -259,6 +268,99 @@ class Robomaster:
         else:
             return 'no distance value'
 
+    def on_chassis_attitude_data_push(self, callback, frequency=None):
+        if callback:
+            if callback not in self.chassis_attitude_cb_list:
+                self.chassis_attitude_cb_list.append(callback)
+        
+            if frequency:
+                try:
+                    f = int(frequency)
+
+                    if not(f == 1 or f == 5 or f == 10 or f == 20 or f ==30 or f == 50):
+                        f = 10
+
+                except ValueError:
+                    f = 10
+            
+            cmd = 'chassis push attitude on ' + str(f)
+
+            print(cmd)
+            return self._blocksend(cmd)
+        else:
+            return -1
+
+    def off_chassis_attitude_data_push(self):
+            
+        cmd = 'chassis push attitude off'
+
+        self.chassis_attitude_cb_list.clear()
+
+        return self._blocksend(cmd)
+            
+    def on_chassis_position_data_push(self, callback, frequency=None):
+        if callback:
+            if callback not in self.chassis_position_cb_list:
+                self.chassis_position_cb_list.append(callback)
+        
+            if frequency:
+                try:
+                    f = int(frequency)
+
+                    if not(f == 1 or f == 5 or f == 10 or f == 20 or f ==30 or f == 50):
+                        f = 10
+
+                except ValueError:
+                    f = 10
+            
+            cmd = 'chassis push position on ' + str(f)
+
+            print(cmd)
+            return self._blocksend(cmd)
+        else:
+            return -1
+
+    def off_chassis_position_data_push(self):
+            
+        cmd = 'chassis push position off'
+
+        self.chassis_position_cb_list.clear()
+
+        return self._blocksend(cmd)
+
+
+    def on_chassis_status_data_push(self, callback, frequency=None):
+        if callback:
+            if callback not in self.chassis_status_cb_list:
+                self.chassis_status_cb_list.append(callback)
+        
+            if frequency:
+                try:
+                    f = int(frequency)
+
+                    if not(f == 1 or f == 5 or f == 10 or f == 20 or f ==30 or f == 50):
+                        f = 10
+
+                except ValueError:
+                    f = 10
+            
+            cmd = 'chassis push status on ' + str(f)
+
+            print(cmd)
+            return self._blocksend(cmd)
+        else:
+            return -1
+
+    def off_chassis_status_data_push(self):
+            
+        cmd = 'chassis push status off'
+
+        self.chassis_status_cb_list.clear()
+
+        return self._blocksend(cmd)
+
+
+
 
     def _connect(self,max_connect_attempt=3):
         self.max_connect_attempt = max_connect_attempt
@@ -451,9 +553,7 @@ class Robomaster:
                 try:
                     telem_address = ('0.0.0.0', self.telem_port)
                     self.telem_sock.bind(telem_address)
-#                    self.telem_process_thread = threading.Thread(target=self._process_telem)
-#                    self.telem_process_thread.daemon = True
-#                    self.telem_process_thread.start()
+                    self.telemthread.start()
                     self.r_socks.append(self.telem_sock)
                     self.a_socks.append(self.telem_sock)
                     print('Robot %s started telemetry receiver' % self.robot_ip)
@@ -475,17 +575,48 @@ class Robomaster:
             self.connecting_error = True
             print('Robot %s is not going into command mode' % self.robot_ip)
 
-# To-Do: to handle telemetry    
-#    def _process_telem(self):
-#        try:
-#            while True:
-#                data, address =self.telem_sock.recvfrom(4096)
-#                d = data.decode('UTF-8')
-#                print(d)
-#                time.sleep(0.5)
-#        finally:
-#            print('Robot %s - telem_port error. closed' % self.robot_ip)
-#            self.telem_sock.close()
+    def _dispatch_telemetry(self):
+            while self.socket_closed == False:
+                sleep = self.telemetry_sleep
+                p = None
+                s = None
+                a = None
+                try:
+                    d = self.data_queue[self.telem_sock].get()
+                    data = d.decode('UTF-8')
+                except queue.Empty:
+                    sleep = self.telemetry_sleep
+                else:
+                    if ';' in data:
+                        streams = data.split(';')
+                        for ss in streams:
+                            if 'position' in ss:
+                                p = ss
+                            if 'attitude' in ss:
+                                a = ss
+                            if 'status' in ss:
+                                s = ss
+                    else:
+                        if 'position' in data:
+                            p = data
+                        if 'attitude' in data:
+                            a = data
+                        if 'status' in data:
+                            s = data
+    
+                    if p:
+                        for pcb in self.chassis_position_cb_list:
+                            pcb(p)
+                    if s:
+                        for scb in self.chassis_status_cb_list:
+                            scb(s)
+                    if a:
+                        for acb in self.chassis_attitude_cb_list:
+                            acb(a)
+
+
+                if self.data_queue[self.telem_sock].empty():
+                    time.sleep(sleep)
 
 
     def _process_video_mode(self, result):
@@ -674,7 +805,7 @@ class Robomaster:
                             else:
                                 if r is self.telem_sock:
                                     tdata,address = self.telem_sock.recvfrom(4096)
-                                    print(tdata)
+                                    self.data_queue[self.telem_sock].put(tdata)
                                   
         
             for w in writable:
@@ -736,6 +867,18 @@ class Robomaster:
 
 
 
+def testattitudepush(data):
+    print('attitude')
+    print(data)
+
+def testpositionpush(data):
+    print('position')
+    print(data)
+
+def teststatuspush(data):
+    print('status')
+    print(data)
+
 if __name__ == '__main__':
     try:
 
@@ -747,6 +890,25 @@ if __name__ == '__main__':
             print(r.move_chassis_by_speed(x=0.5))
             print(r.move_chassis_by_distance(x=1,z=600))
             print(r.set_travel_mode('chassis_leader'))
+            print(r.on_chassis_attitude_data_push(testattitudepush,10))
+            print(r.on_chassis_position_data_push(testpositionpush,10))
+            print(r.on_chassis_status_data_push(teststatuspush,10))
+
+            i = 0
+            while i < 20:
+                time.sleep(0.5)
+                i = i + 1
+
+            print(r.off_chassis_attitude_data_push())
+            print(r.off_chassis_position_data_push())
+            print(r.off_chassis_status_data_push())
+
+
+            i = 0
+            while i < 3:
+                time.sleep(0.5)
+                i = i + 1
+
             print('done')
         else:
             print('false')
