@@ -231,32 +231,24 @@ Return True if audio stream is turned on successful, else return False.</p>
 <p>Robomaster object can push telemetry data to callback functions. Robomaster object will call the callback functions when receive telemetry data from robomaster.
 It is necessary to provide function when Robomaster object’s methods to enable telemetry data push.</p>
 <p>For example: Request to get attitude data.</p>
-<dl class="docutils">
-<dt>::</dt>
-<dd><p class="first"># these call back functions will be called by Robomaster object
-# these functions only print the data
-def testattitudepush(data):</p>
-<blockquote>
-<div>print(‘tap’)
-print(data)</div></blockquote>
-<dl class="last docutils">
-<dt>def testattitudepush2(data):</dt>
-<dd>print(‘tap2’)
-print(data)</dd>
-<dt>if __name__ == ‘__main__’:</dt>
-<dd><dl class="first last docutils">
-<dt>try:</dt>
-<dd><p class="first">r = Robomaster()
-if r.connect_via_direct_wifi():</p>
-<blockquote class="last">
-<div>print(r.on_attitude_data_push(testattitudepush,25))
-print(r.on_attitude_data_push(testattitudepush2,50))</div></blockquote>
-</dd>
-</dl>
-</dd>
-</dl>
-</dd>
-</dl>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="c1"># these call back functions will be called by Robomaster object</span>
+<span class="c1"># these functions only print the data</span>
+<span class="k">def</span> <span class="nf">testattitudepush</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;tap&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<span class="k">def</span> <span class="nf">testattitudepush2</span><span class="p">(</span><span class="n">data</span><span class="p">):</span>
+    <span class="nb">print</span><span class="p">(</span><span class="s1">&#39;tap2&#39;</span><span class="p">)</span>
+    <span class="nb">print</span><span class="p">(</span><span class="n">data</span><span class="p">)</span>
+
+<span class="k">if</span> <span class="vm">__name__</span> <span class="o">==</span> <span class="s1">&#39;__main__&#39;</span><span class="p">:</span>
+    <span class="k">try</span><span class="p">:</span>
+        <span class="n">r</span> <span class="o">=</span> <span class="n">Robomaster</span><span class="p">()</span>
+        <span class="k">if</span> <span class="n">r</span><span class="o">.</span><span class="n">connect_via_direct_wifi</span><span class="p">():</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">on_attitude_data_push</span><span class="p">(</span><span class="n">testattitudepush</span><span class="p">,</span><span class="mi">25</span><span class="p">))</span>
+            <span class="nb">print</span><span class="p">(</span><span class="n">r</span><span class="o">.</span><span class="n">on_attitude_data_push</span><span class="p">(</span><span class="n">testattitudepush2</span><span class="p">,</span><span class="mi">50</span><span class="p">))</span>
+</pre></div>
+</div>
 <p>Result:</p>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">tap2</span>
 <span class="n">chassis</span> <span class="n">push</span> <span class="n">attitude</span> <span class="mf">0.06</span> <span class="o">-</span><span class="mf">0.48</span> <span class="mf">138.46</span> <span class="p">;</span>
@@ -286,12 +278,11 @@ When attitude data is received, the callback function will called with the recei
 <div class="section" id="on-chassis-position-data-push-callback-frequency">
 <span id="on-chassis-position-data-push"></span><h4>on_chassis_position_data_push(** callback <strong>, **[</strong> frequency <strong>]</strong>)<a class="headerlink" href="#on-chassis-position-data-push-callback-frequency" title="Permalink to this headline">¶</a></h4>
 <p><em>on_chassis_position_data_push(callback , [frequency])</em> method turns on Robomaster’s ability to push out position data at the frequency.
-Position are referring x, y distance travelled or how much Robomaster has turned for the current chassis movement commands.
-If frequency is not provided, position data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
+Position are referring x, y distance travelled. If frequency is not provided, position data will push at 10Hz. Acceptable frequency rate are 1,10,20,30,50 Hz.
 When position data is received, the callback function will called with the recieved attitude. If more callback functions are needed, call this method again with other callback functions.</p>
 <p>For example:</p>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                 <span class="c1">#x   y   z</span>
-<span class="n">chassis</span> <span class="n">position</span> <span class="mf">1.5</span>  <span class="mi">2</span>   <span class="mi">60</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span>                 <span class="c1">#x   y</span>
+<span class="n">chassis</span> <span class="n">position</span> <span class="mf">1.5</span>  <span class="mi">2</span>
 </pre></div>
 </div>
 </div>

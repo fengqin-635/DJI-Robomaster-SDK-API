@@ -238,6 +238,7 @@ It is necessary to provide function when Robomaster object's methods to enable t
 For example: Request to get attitude data.
 
 ::
+
     # these call back functions will be called by Robomaster object
     # these functions only print the data
     def testattitudepush(data):
