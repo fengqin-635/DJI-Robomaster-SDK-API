@@ -175,6 +175,10 @@ getaudioframe()
 
 .. _set_travel_mode:
 
+
+Set Robot Travel mode:
+----------------------
+
 set_travel_mode(**mode**)
 ^^^^^^^^^^^^^^^^^^^^^^^^^
 *set_travel_mode(mode)* functions set the travel mode of the robot. Acceptable value for mode are chassis_lead, gimbal_lead or free. Return ok if it is successful.
@@ -186,6 +190,9 @@ query_travel_mode()
 *query_travel_mode(mode)* function queries the current travel mode of the robot. Return a string containing the travel mode of the robot.
 
 .. _set_chassis_wheel_speed:
+
+Chassis Control
+---------------
 
 set_chassis_wheel_speed(**w1,w2,w3,w4**)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
