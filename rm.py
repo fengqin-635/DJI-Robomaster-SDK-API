@@ -62,6 +62,7 @@ class Robomaster:
         self.connecting = False
         self.connecting_timeout = False
         self.connecting_error = False
+        self.in_action = False
         self.data_queue = {
             self.command_sock : queue.Queue(32),
             self.audio_sock : queue.Queue(32),
@@ -75,6 +76,13 @@ class Robomaster:
         self.close()
 
     def close(self):
+        if self.in_audio_mode:
+            self.audiostreamoff()
+        if self.in_video_mode:
+            self.videostreamoff
+
+        r = self._blocksend('quit')
+
         self.socket_closed = True
         self.video_sock.close()
         self.audio_sock.close()
@@ -106,6 +114,151 @@ class Robomaster:
             except socket.error:
                 print("Invalid IP")
                 return False
+    
+    def set_travel_mode(self, mode,block=True):
+        mode = mode.lower()
+        if mode == 'chassis_lead' or mode == 'gimbal_lead' or mode == 'free':            
+            cmd = 'robot mode ' + mode
+            if block:
+                return self._blocksend(cmd)
+            else:
+                self._send(cmd)
+                return -1
+        else:
+            return 'error. no such mode.'
+
+    def query_travel_mode(self,block=True):
+        if block:
+            return self._blocksend('robot mode ?')
+        else:
+            self._send(cmd)
+            return -1
+
+    def set_chassis_wheel_speed(self,w1,w2,w3,w4,block=True):
+        try:
+            wi1 = str(int(w1))
+            wi2 = str(int(w2))
+            wi3 = str(int(w3))
+            wi4 = str(int(w4))
+
+            cmd = 'chassis wheel w1 ' + wi1 + ' w2 ' + wi2 + ' w3 ' + wi3 + ' w4 ' + wi4
+
+            if block:
+                return self._block(cmd)
+            else:
+                return -1
+
+        except ValueError:
+            return 'invalid value. expected number only.'
+
+    def move_chassis_by_distance(self, x=None, y=None, z=None, vxy=None, vz=None, block=True):
+        error = False
+        if x or y or z:
+            cmd = 'chassis move '
+            if x:
+                try:
+                    xx = float(x)
+                    if xx <= 5 and xx >= -5:
+                        cmd = cmd + 'x ' + str(xx) + ' '
+                    else:
+                        error = True
+                except ValueError:
+                    error = True
+            if y:
+                try:
+                    xx = float(y)
+                    if xx <= 5 and xx >= -5:
+                        cmd = cmd + 'y ' + str(xx) + ' '
+                    else:
+                        error = True
+                except ValueError:
+                    error = True
+            if z:
+                try:
+                    xx = float(z)
+                    if xx <= 1800 and xx >= -1800:
+                        cmd = cmd + 'z ' + str(xx) + ' '
+                    else:
+                        error = True
+                except ValueError:
+                    error = True
+            if vxy:
+                try:
+                    xx = float(vxy)
+                    if xx <= 3.5 and xx >= 0:
+                        cmd = cmd + 'vxy ' + str(xx) + ' '
+                    else:
+                        error = True
+                except ValueError:
+                    error = True
+
+            if vz:
+                try:
+                    xx = float(vz)
+                    if xx <= 600 and xx >= 0:
+                        cmd = cmd + 'vz ' + str(xx)
+                    else:
+                        error = True
+                except ValueError:
+                    error = True
+
+            if error and cmd == 'chassis move ':
+                return 'error in value'
+
+            print(cmd)
+
+            if block:
+                return self._blocksend(cmd)
+            else:
+                self._send(cmd)
+                return -1
+        else:
+            return 'no distance value'
+
+    def move_chassis_by_speed(self, x=None, y=None, z=None, block=True):
+        error = False
+        if x or y or z:
+            cmd = 'chassis speed '
+            if x:
+                try:
+                    xx = float(x)
+                    if xx <= 5 and xx >= -5:
+                        cmd = cmd + 'x ' + str(xx) + ' '
+                    else:
+                        error = True
+                except ValueError:
+                    error = True
+            if y:
+                try:
+                    xx = float(y)
+                    if xx <= 5 and xx >= -5:
+                        cmd = cmd + 'y ' + str(xx) + ' '
+                    else:
+                        error = True
+                except ValueError:
+                    error = True
+            if z:
+                try:
+                    xx = float(z)
+                    if xx <= 1800 and xx >= -1800:
+                        cmd = cmd + 'z ' + str(xx) + ' '
+                    else:
+                        error = True
+                except ValueError:
+                    error = True
+
+            if error and cmd == 'chassis speed ':
+                return 'error in value'
+            print(cmd)
+
+            if block:
+                return self._blocksend(cmd)
+            else:
+                self._send(cmd)
+                return -1
+        else:
+            return 'no distance value'
+
 
     def _connect(self,max_connect_attempt=3):
         self.max_connect_attempt = max_connect_attempt
@@ -127,7 +280,7 @@ class Robomaster:
             while connect_attempt < self.max_connect_attempt:
                 print('Attempt %s.' % str(connect_attempt))
 
-                self.send('command')
+                self._send('command')
 
                 while self.in_command_mode == False and self.connecting_timeout == False and self.connecting_error == False:
                     time.sleep(0.5)
@@ -152,9 +305,9 @@ class Robomaster:
             self.command_sock.close()
             return False
     
-    def send(self, data):
-        self.last_cmd = data.lower()
-#        self._cmdseq = (self._cmdseq + 1) % 100 
+    def _send(self, data):
+
+#        self.last_cmd = data.lower()
 
         try:
             if data.lower() == 'command' and self.in_command_mode == False:
@@ -172,8 +325,23 @@ class Robomaster:
             print("Robot %s (send) Queue Full- %s" % (self.robot_ip,err))
             return False
 
+    def _blocksend(self,data):
+        while self.in_action:
+            time.sleep(0.1)
+        
+        while self.message_q.empty() == False:
+            time.sleep(0.1)
+
+        d = data.lower()
+        self._send(d)
+
+        while self.in_action or self.message_q.empty() == False:
+            time.sleep(0.1)
+
+        return self.response
+
     def videostreamon(self):
-        self.send('stream on')
+        self._send('stream on')
         i = 0
         while self.in_video_mode == False and i < 5:
             time.sleep(1)
@@ -181,7 +349,7 @@ class Robomaster:
         return self.in_video_mode
 
     def videostreamoff(self):
-        self.send('stream off')
+        self._send('stream off')
         i = 0
         while self.in_video_mode == True and i < 5:
             time.sleep(1)
@@ -193,7 +361,7 @@ class Robomaster:
             return False
 
     def audiostreamoff(self):
-        self.send('audio on')
+        self._send('audio off')
         i = 0
         while self.in_audio_mode == True and i < 5:
             time.sleep(1)
@@ -207,7 +375,7 @@ class Robomaster:
         return self.in_audio_mode
     
     def audiostreamon(self):
-        self.send('audio on')
+        self._send('audio on')
         i = 0
         while self.in_audio_mode == False or i < 5:
             time.sleep(1)
@@ -438,9 +606,11 @@ class Robomaster:
                     print('empty')
                 return self.audioframe
         else:
-            print("Robot %s is not in audio mode.")
+            print("Robot %s is not in audio mode.")                    
+
 
     def _process_socks(self):
+
         data =[]
 #        while True:
         while self.socket_closed == False:
@@ -453,12 +623,12 @@ class Robomaster:
 
             for r in readable:
                 if r is self.command_sock:
-                    print("command port")
+#                    print("command port")
                     decode_error = False
                     try:
                         cdata,address = self.command_sock.recvfrom(4096)
                         d_full = cdata.decode('UTF-8')
-                        print("received from %s- %s : %s" % (address,self.last_cmd,cdata))
+#                        print("received from %s- %s : %s" % (address,self.last_cmd,cdata))
                         seq_num = self._get_seq_number_from_response_with_seq(d_full)
                         d = d_full
                         if seq_num > -1:
@@ -477,6 +647,7 @@ class Robomaster:
                         if self.last_cmd == 'audio on':
                             self._process_audio_mode(d)
                         self.response = d
+                    self.in_action = False
                     self.last_cmd = None
                 else:
                     if r is self.video_sock:
@@ -508,7 +679,8 @@ class Robomaster:
             for w in writable:
                 try:
                     if self.message_q.empty() == False and w is self.command_sock:
-                        if (self.response != '' and self.last_cmd is None) or self.in_command_mode == False:
+#                        if (self.response != '' and self.last_cmd is None) or self.in_command_mode == False:
+                        if self.in_action == False or self.in_command_mode == False:
                             msg_to_send = self.message_q.get_nowait()
                             self._cmdseq = (self._cmdseq + 1) % 100 
                             msg_to_send_with_seq = msg_to_send + ' seq ' + str(self._cmdseq)
@@ -517,8 +689,10 @@ class Robomaster:
                             self.last_cmd = msg_to_send
                             self.response = ''
                             self.cmd_start_time = time.time()
+                            self.in_action = True
                         else:
-                            if self.response == '' and self.in_command_mode and self.last_cmd:
+#                            if self.response == '' and self.in_command_mode and self.last_cmd:
+                            if self.in_action and self.in_command_mode:
                                 if (time.time() - self.cmd_start_time) > self.cmd_timeout:
                                     print("Robot %s response to last command (%s) timeout. Proceed with next command." % (self.robot_ip, self.last_cmd))
                                     msg_to_send = self.message_q.get_nowait()
@@ -529,7 +703,7 @@ class Robomaster:
                                     self.last_cmd = msg_to_send
                                     self.response = ''
                                     self.cmd_start_time = time.time()
-                                
+                                    self.in_action = True
                     else:
                         if self.message_q.empty() and w is self.command_sock and self.connecting:
                             if(time.time() - self.cmd_start_time) > self.cmd_timeout:
@@ -567,6 +741,11 @@ if __name__ == '__main__':
         r = Robomaster()
 
         if r.connect_via_direct_wifi(): # connect function returns true when connected. otherwise
+            print(r.set_travel_mode('chassis_lead'))
+            print(r.query_travel_mode())
+            print(r.move_chassis_by_speed(x=0.5))
+            print(r.move_chassis_by_distance(x=1,z=600))
+            print(r.set_travel_mode('chassis_leader'))
             print('done')
         else:
             print('false')
