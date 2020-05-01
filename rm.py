@@ -457,6 +457,7 @@ class Robomaster:
                     self.r_socks.append(self.telem_sock)
                     self.a_socks.append(self.telem_sock)
                     print('Robot %s started telemetry receiver' % self.robot_ip)
+                    print('SDK Connection to Robot %s successful' % self.robot_ip)
                 except socket.error as err:
                     self.telem_sock.close()
                     print("Robot %s error at binding to telemetry port - %s" % (self.robot_ip,err))
