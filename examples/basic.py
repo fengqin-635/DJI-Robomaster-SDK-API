@@ -1,36 +1,50 @@
 import time
-from TelloRMVideoClient import TelloRMVideoClient
-from rm import RMS1
+from rm import Robomaster
 import threading
 import socket
 import os
 import sys
 import socket
-from tello import Tello
+
+def testattitudepush(data):
+    print(data)
 
 def main(mode='host'):
-    global e
-    global t
-    if mode == 'host':
-        e = RMS1('192.168.2.1')
-        t = Tello('192.168.10.1')
-    else:
+    robot_ip = '192.168.2.1'
+    robot = Robomaster()
+    if mode == 'network':
         robot_ip = robotlistener()
         if robot_ip == '':
             print('no robot connected to network')
-        else:
-            e = RMS1(robot_ip)
+            robot_ip = '192.168.2.1'
+    
+    if robot.start_sdk_session(robot_ip) == 1:
+        robot.instruct('chassis push attitude on status on position on')
+        time.sleep(1)
+        print(robot.instruct('sound event applause on'))
+        robot.inform(testattitudepush)
+        print(robot.instruct('armor event hit on'))
+        print(robot.instruct('sensor_adapter event io_level on'))
+        print(robot.instruct('gimbal push attitude on'))
+        time.sleep(1)
+        robot.instruct('gimbal moveto p 20 y 50 vp 100 vy 100')
+        time.sleep(2)
+        print(robot.gimbal_x)
+        print(robot.gimbal_y)
+        print(robot.instruct('chassis position ?'))
+        time.sleep(1)
+        print(robot.instruct('chassis wheel w1 0 w2 0 w3 0 w4 0'))
+        time.sleep(1)
+        i = 0
+        while i < 100:
+            i = i + 1
+            time.sleep(0.1) #loop for you to clap to test event callback
 
-    if e is not None and t is not None: 
-        if e.connect() and t.connect(): 
-            v = TelloRMVideoClient(e,t)
-            v.start()
-            while v.stopApp == False:
-                time.sleep(2)
-        else:
-            print('no RM online or no Tello online')
+        print(robot_ip.instruct('chassis wheel w9 20 w2 20 w3 30 w5 40'))
+        time.sleep(1)
+        robot.quit_sdk_session()
     else:
-        print('no RM online or no Tello online')
+        print('connection failed')
 
 
 def robotlistener():
@@ -73,9 +87,7 @@ def robotlistener():
 
 if __name__ == "__main__":
     try:
-        e = None
-        t = None
-        main('host')
+        main('host') # main('network') if you wish to try using router mode
     except KeyboardInterrupt:
         e.close()
         sys.exit(0)

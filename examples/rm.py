@@ -731,6 +731,13 @@ class Robomaster:
 def testattitudepush(data):
     print(data)
 
+def testpositionpush(data):
+    print('position')
+    print(data)
+
+def teststatuspush(data):
+    print('status')
+    print(data)
 
 if __name__ == '__main__':
     try:
